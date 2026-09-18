@@ -120,10 +120,59 @@
 
     #photoInput { display: none; }
 
+    .add-more-btn {
+      display: none;
+      background: none;
+      border: 1px dashed var(--drop-hover-border);
+      color: var(--drop-hover-border);
+      width: 100%;
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-top: 10px;
+      cursor: pointer;
+      box-shadow: none;
+    }
+    .add-more-btn:hover { background: var(--drop-hover-bg); transform: none; box-shadow: none; }
+
     #preview {
       display: none;
       margin-top: 16px;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
     }
+
+    .preview-item {
+      position: relative;
+      display: inline-block;
+    }
+
+    .preview-item img {
+      max-height: 100px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      display: block;
+    }
+
+    .remove-btn {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background: #e05555;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      font-size: 12px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      padding: 0;
+      margin: 0;
+    }
+    .remove-btn:hover { transform: none; box-shadow: 0 2px 6px rgba(0,0,0,0.3); background: #c94444; }
 
     button#generateBtn {
       background: linear-gradient(135deg, #667eea, #764ba2);
@@ -208,6 +257,7 @@
     </label>
 
     <div id="preview"></div>
+    <button class="add-more-btn" id="addMoreBtn">+ Add another photo</button>
 
     <button id="generateBtn">✨ Get Recipe</button>
 
@@ -220,10 +270,14 @@
     const dropZone = document.getElementById('dropZone');
     const dropText = document.getElementById('dropText');
     const preview = document.getElementById('preview');
+    const addMoreBtn = document.getElementById('addMoreBtn');
     const generateBtn = document.getElementById('generateBtn');
     const loading = document.getElementById('loading');
     const result = document.getElementById('result');
     const themeToggle = document.getElementById('themeToggle');
+
+    // Keeps track of ALL selected photos, across multiple picks
+    let selectedFiles = [];
 
     function applyTheme(isDark) {
       document.body.classList.toggle('dark', isDark);
@@ -235,27 +289,62 @@
       applyTheme(!document.body.classList.contains('dark'));
     });
 
-    function showPreview(files) {
-      if (!files || files.length === 0) return;
+    function renderPreview() {
       preview.innerHTML = '';
+      if (selectedFiles.length === 0) {
+        preview.style.display = 'none';
+        addMoreBtn.style.display = 'none';
+        dropText.textContent = 'Tap to upload or drag photo(s) here';
+        return;
+      }
       preview.style.display = 'flex';
-      preview.style.gap = '8px';
-      preview.style.flexWrap = 'wrap';
-      preview.style.justifyContent = 'center';
-      Array.from(files).forEach(file => {
+      addMoreBtn.style.display = 'block';
+      dropText.textContent = selectedFiles.length + ' photo(s) selected';
+
+      selectedFiles.forEach((file, index) => {
+        const item = document.createElement('div');
+        item.className = 'preview-item';
+
         const img = document.createElement('img');
         img.src = URL.createObjectURL(file);
-        img.style.maxHeight = '100px';
-        img.style.borderRadius = '10px';
-        img.style.boxShadow = '0 4px 10px rgba(0,0,0,0.15)';
-        preview.appendChild(img);
+        item.appendChild(img);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-btn';
+        removeBtn.textContent = '✕';
+        removeBtn.type = 'button';
+        removeBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          selectedFiles.splice(index, 1);
+          renderPreview();
+        });
+        item.appendChild(removeBtn);
+
+        preview.appendChild(item);
       });
-      dropText.textContent = files.length + ' photo(s) selected';
+
       result.style.display = 'none';
     }
 
-    photoInput.addEventListener('change', () => showPreview(photoInput.files));
+    function addFiles(fileList) {
+      Array.from(fileList).forEach(file => selectedFiles.push(file));
+      renderPreview();
+    }
 
+    // Normal click on the drop zone / file picker
+    photoInput.addEventListener('change', () => {
+      addFiles(photoInput.files);
+      photoInput.value = ''; // reset so picking the same file again still triggers 'change'
+    });
+
+    // "+ Add another photo" button reopens the file picker
+    addMoreBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      photoInput.click();
+    });
+
+    // Drag and drop support (adds to existing selection too)
     ['dragover', 'dragenter'].forEach(evt =>
       dropZone.addEventListener(evt, (e) => {
         e.preventDefault();
@@ -270,20 +359,18 @@
     );
     dropZone.addEventListener('drop', (e) => {
       if (e.dataTransfer.files.length > 0) {
-        photoInput.files = e.dataTransfer.files;
-        showPreview(e.dataTransfer.files);
+        addFiles(e.dataTransfer.files);
       }
     });
 
     generateBtn.addEventListener('click', async () => {
-      const files = photoInput.files;
-      if (!files || files.length === 0) {
+      if (selectedFiles.length === 0) {
         alert('Please choose at least one photo!');
         return;
       }
 
       const formData = new FormData();
-      Array.from(files).forEach(file => formData.append('photos', file));
+      selectedFiles.forEach(file => formData.append('photos', file));
 
       generateBtn.disabled = true;
       loading.style.display = 'block';
