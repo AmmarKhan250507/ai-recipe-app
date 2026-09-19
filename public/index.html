@@ -174,6 +174,34 @@
     }
     .remove-btn:hover { transform: none; box-shadow: 0 2px 6px rgba(0,0,0,0.3); background: #c94444; }
 
+    .dish-name-box {
+      margin-top: 18px;
+      text-align: left;
+    }
+
+    .dish-label {
+      display: block;
+      font-size: 12.5px;
+      color: var(--text-sub);
+      margin-bottom: 6px;
+    }
+
+    #dishNameInput {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--drop-border);
+      background: var(--drop-bg);
+      color: var(--text-main);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    #dishNameInput:focus {
+      border-color: var(--drop-hover-border);
+    }
+
     button#generateBtn {
       background: linear-gradient(135deg, #667eea, #764ba2);
       color: white;
@@ -259,6 +287,11 @@
     <div id="preview"></div>
     <button class="add-more-btn" id="addMoreBtn">+ Add another photo</button>
 
+    <div class="dish-name-box">
+      <label for="dishNameInput" class="dish-label">Can't get a clear photo? Type a dish name instead:</label>
+      <input type="text" id="dishNameInput" placeholder="e.g. Chicken Biryani" />
+    </div>
+
     <button id="generateBtn">✨ Get Recipe</button>
 
     <div id="loading"><span class="spinner"></span>AI is looking at your photos...</div>
@@ -271,12 +304,12 @@
     const dropText = document.getElementById('dropText');
     const preview = document.getElementById('preview');
     const addMoreBtn = document.getElementById('addMoreBtn');
+    const dishNameInput = document.getElementById('dishNameInput');
     const generateBtn = document.getElementById('generateBtn');
     const loading = document.getElementById('loading');
     const result = document.getElementById('result');
     const themeToggle = document.getElementById('themeToggle');
 
-    // Keeps track of ALL selected photos, across multiple picks
     let selectedFiles = [];
 
     function applyTheme(isDark) {
@@ -332,19 +365,16 @@
       renderPreview();
     }
 
-    // Normal click on the drop zone / file picker
     photoInput.addEventListener('change', () => {
       addFiles(photoInput.files);
-      photoInput.value = ''; // reset so picking the same file again still triggers 'change'
+      photoInput.value = '';
     });
 
-    // "+ Add another photo" button reopens the file picker
     addMoreBtn.addEventListener('click', (e) => {
       e.preventDefault();
       photoInput.click();
     });
 
-    // Drag and drop support (adds to existing selection too)
     ['dragover', 'dragenter'].forEach(evt =>
       dropZone.addEventListener(evt, (e) => {
         e.preventDefault();
@@ -364,13 +394,16 @@
     });
 
     generateBtn.addEventListener('click', async () => {
-      if (selectedFiles.length === 0) {
-        alert('Please choose at least one photo!');
+      const dishName = dishNameInput.value.trim();
+
+      if (selectedFiles.length === 0 && !dishName) {
+        alert('Please choose at least one photo, or type a dish name!');
         return;
       }
 
       const formData = new FormData();
       selectedFiles.forEach(file => formData.append('photos', file));
+      if (dishName) formData.append('dishName', dishName);
 
       generateBtn.disabled = true;
       loading.style.display = 'block';
